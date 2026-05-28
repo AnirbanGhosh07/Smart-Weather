@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport"
+content="width=device-width, initial-scale=1.0">
+
+<title>Smart Weather</title>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial;
+}
+
+body{
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    overflow:hidden;
+    color:white;
+    transition:1s;
+    background:#000;
+}
+
+/* Dynamic Backgrounds */
+
+.morning{
+    background:linear-gradient(
+    to bottom,
+    #f59e0b,
+    #fde68a
+    );
+}
+
+.afternoon{
+    background:linear-gradient(
+    to bottom,
+    #38bdf8,
+    #0ea5e9
+    );
+}
+
+.evening{
+    background:linear-gradient(
+    to bottom,
+    #fb7185,
+    #7c3aed
+    );
+}
+
+.night{
+    background:linear-gradient(
+    to bottom,
+    #020617,
+    #1e293b
+    );
+}
+
+.rainy{
+    background:linear-gradient(
+    to bottom,
+    #1e293b,
+    #334155
+    );
+}
+
+/* Container */
+
+.container{
+    width:430px;
+    max-height:95vh;
+    overflow-y:auto;
+    background:rgba(15,23,42,0.85);
+    backdrop-filter:blur(12px);
+    padding:25px;
+    border-radius:20px;
+    z-index:10;
+    position:relative;
+}
+
+/* Search */
+
+.search-box{
+    position:relative;
+}
+
+input{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:12px;
+    outline:none;
+    font-size:16px;
+}
+
+button{
+    width:100%;
+    margin-top:10px;
+    padding:14px;
+    border:none;
+    border-radius:12px;
+    background:#0284c7;
+    color:white;
+    font-size:16px;
+    cursor:pointer;
+}
+
+#suggestions{
+    background:#334155;
+    border-radius:10px;
+    margin-top:5px;
+    max-height:220px;
+    overflow-y:auto;
+}
+
+#suggestions div{
+    padding:12px;
+    cursor:pointer;
+    border-bottom:1px solid #475569;
+}
+
+#suggestions div:hover{
+    background:#475569;
+}
+
+/* Weather */
+
+.weather{
+    margin-top:20px;
+    text-align:center;
+}
+
+.city{
+    font-size:30px;
+    font-weight:bold;
+}
+
+.temp{
+    font-size:65px;
+    margin:10px 0;
+}
+
+.condition{
+    font-size:22px;
+    margin-bottom:10px;
+}
+
+.icon{
+    font-size:90px;
+}
+
+/* Info */
+
+.info{
+    margin-top:20px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+}
+
+.card{
+    background:#334155;
+    padding:15px;
+    border-radius:12px;
+}
+
+/* Forecast */
+
+.hourly,
+.forecast{
+    margin-top:25px;
+}
+
+.hour-list,
+.forecast-list{
+    display:flex;
+    overflow-x:auto;
+    gap:10px;
+    padding-bottom:10px;
+}
+
+.hour-card,
+.day-card{
+    min-width:120px;
+    background:#334155;
+    padding:12px;
+    border-radius:12px;
+    text-align:center;
+}
+
+/* Sun */
+
+.sun{
+    position:absolute;
+    width:140px;
+    height:140px;
+    border-radius:50%;
+    background:#fde047;
+    top:60px;
+    right:60px;
+    box-shadow:0 0 100px #fde047;
+    animation:sunGlow 3s infinite alternate;
+}
+
+@keyframes sunGlow{
+
+    from{
+        transform:scale(1);
+    }
+
+    to{
+        transform:scale(1.1);
+    }
+}
+
+/* Moon */
+
+.moon{
+    position:absolute;
+    width:120px;
+    height:120px;
+    border-radius:50%;
+    background:#e2e8f0;
+    top:60px;
+    right:60px;
+    box-shadow:0 0 60px #fff;
+}
+
+/* Rain */
+
+.rain{
+    position:absolute;
+    width:2px;
+    background:white;
+    opacity:0.4;
+    animation:rainFall linear infinite;
+}
+
+@keyframes rainFall{
+
+    from{
+        transform:translateY(-100px);
+    }
+
+    to{
+        transform:translateY(100vh);
+    }
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div id="weatherEffect"></div>
+
+<div class="container">
+
+<h1 style="text-align:center;margin-bottom:20px;">
+Smart Weather
+</h1>
+
+<div class="search-box">
+
+<input
+type="text"
+id="cityInput"
+placeholder="Search city..."
+onkeyup="showSuggestions()">
+
+<div id="suggestions"></div>
+
+</div>
+
+<button onclick="getWeather()">
+Get Weather
+</button>
+
+<div class="weather" id="weather"></div>
+
+</div>
+
+<script>
+
+const apiKey =
+"5b3a62da-5ab2-11f1-b099-0242ac120004-5b3a6370-5ab2-11f1-b099-0242ac120004";
+
+// Cities
+
+const cities = [
+
+"Maigram",
+"Arambagh",
+"Kolkata",
+"Durgapur",
+"Asansol",
+"Darjeeling",
+"Digha",
+"Delhi",
+"Mumbai",
+"London",
+"Tokyo",
+"Dubai"
+
+];
+
+// Suggestions
+
+function showSuggestions(){
+
+    const input =
+    document.getElementById("cityInput")
+    .value
+    .toLowerCase();
+
+    let html = `
+
+    <div onclick="loadCurrentLocation()">
+
+        📍 My Current Location
+
+    </div>
+
+    `;
+
+    const filtered =
+    cities.filter(city =>
+        city.toLowerCase().includes(input)
+    );
+
+    filtered.forEach(city => {
+
+        html += `
+
+        <div onclick="selectCity('${city}')">
+
+            ${city}
+
+        </div>
+
+        `;
+    });
+
+    document.getElementById("suggestions")
+    .innerHTML = html;
+}
+
+function selectCity(city){
+
+    document.getElementById("cityInput").value =
+    city;
+
+    document.getElementById("suggestions").innerHTML =
+    "";
+}
+
+// Current location option
+
+function loadCurrentLocation(){
+
+    navigator.geolocation.getCurrentPosition(
+
+        async position => {
+
+            fetchWeather(
+
+                position.coords.latitude,
+
+                position.coords.longitude,
+
+                "My Current Location"
+            );
+        }
+    );
+
+    document.getElementById("suggestions").innerHTML =
+    "";
+}
+
+// Auto load current location
+
+window.onload = function(){
+
+    navigator.geolocation.getCurrentPosition(
+
+        async position => {
+
+            fetchWeather(
+
+                position.coords.latitude,
+
+                position.coords.longitude,
+
+                "My Current Location"
+            );
+        }
+    );
+};
+
+// Search city
+
+async function getWeather(){
+
+    const city =
+    document.getElementById("cityInput").value;
+
+    const geoUrl =
+`https://nominatim.openstreetmap.org/search?format=json&q=${city}`;
+
+    const response =
+    await fetch(geoUrl);
+
+    const data =
+    await response.json();
+
+    fetchWeather(
+
+        data[0].lat,
+
+        data[0].lon,
+
+        city
+    );
+}
+
+// Fetch weather
+
+async function fetchWeather(lat,lng,city){
+
+    const url =
+`https://api.stormglass.io/v2/weather/point?lat=${lat}&lng=${lng}&params=airTemperature,humidity,windSpeed,precipitation`;
+
+    const response =
+    await fetch(url, {
+
+        headers:{
+            "Authorization":apiKey
+        }
+
+    });
+
+    const data =
+    await response.json();
+
+    const current =
+    data.hours[0];
+
+    const hour =
+    new Date().getHours();
+
+    let timeClass = "afternoon";
+
+    if(hour >= 5 && hour < 11){
+
+        timeClass = "morning";
+    }
+
+    else if(hour >= 11 && hour < 17){
+
+        timeClass = "afternoon";
+    }
+
+    else if(hour >= 17 && hour < 20){
+
+        timeClass = "evening";
+    }
+
+    else{
+
+        timeClass = "night";
+    }
+
+    let icon = "☀";
+    let condition = "Sunny";
+
+    const weatherEffect =
+    document.getElementById("weatherEffect");
+
+    weatherEffect.innerHTML = "";
+
+    document.body.className = "";
+
+    if(current.precipitation.sg > 0.3){
+
+        icon = "🌧";
+        condition = "Rainy";
+
+        document.body.classList.add("rainy");
+
+        createRain();
+    }
+
+    else{
+
+        document.body.classList.add(timeClass);
+
+        if(timeClass === "night"){
+
+            weatherEffect.innerHTML =
+            `<div class="moon"></div>`;
+
+            icon = "🌙";
+            condition = "Clear Night";
+        }
+
+        else{
+
+            weatherEffect.innerHTML =
+            `<div class="sun"></div>`;
+
+            icon = "☀";
+        }
+    }
+
+    const feelsLike = (
+    current.airTemperature.sg +
+    current.humidity.sg/100*2
+    ).toFixed(1);
+
+    // Hourly forecast
+
+    let hourlyHTML = "";
+
+    for(let i=0;i<48;i++){
+
+        const hourData =
+        data.hours[i];
+
+        if(!hourData) break;
+
+        const time =
+        new Date(hourData.time)
+        .toLocaleTimeString([],{
+            hour:'2-digit'
+        });
+
+        hourlyHTML += `
+
+        <div class="hour-card">
+
+            <p>${time}</p>
+
+            <p>
+            🌡
+            ${hourData.airTemperature.sg}°C
+            </p>
+
+            <p>
+            🌬
+            ${hourData.windSpeed.sg} m/s
+            </p>
+
+            <p>
+            🌧
+            ${(hourData.precipitation.sg*100)
+            .toFixed(0)}%
+            </p>
+
+            <p>
+            💧
+            ${(hourData.precipitation.sg*10)
+            .toFixed(1)} mm
+            </p>
+
+        </div>
+
+        `;
+    }
+
+    // 15 day forecast
+
+    let forecastHTML = "";
+
+    for(let i=0;i<15;i++){
+
+        const day =
+        data.hours[i*6] ||
+        data.hours[data.hours.length-1];
+
+        const date =
+        new Date(day.time)
+        .toLocaleDateString([],{
+            weekday:'short'
+        });
+
+        forecastHTML += `
+
+        <div class="day-card">
+
+            <p>${date}</p>
+
+            <p>
+            🌡
+            ${day.airTemperature.sg}°C
+            </p>
+
+            <p>
+            🌬
+            ${day.windSpeed.sg} m/s
+            </p>
+
+            <p>
+            🌧
+            ${(day.precipitation.sg*100)
+            .toFixed(0)}%
+            </p>
+
+        </div>
+
+        `;
+    }
+
+    document.getElementById("weather")
+    .innerHTML = `
+
+    <div class="icon">
+
+        ${icon}
+
+    </div>
+
+    <div class="city">
+
+        ${city}
+
+    </div>
+
+    <div class="condition">
+
+        ${condition}
+
+    </div>
+
+    <div class="temp">
+
+        ${current.airTemperature.sg}°C
+
+    </div>
+
+    <div class="info">
+
+        <div class="card">
+
+            💧 Humidity<br>
+
+            ${current.humidity.sg}%
+
+        </div>
+
+        <div class="card">
+
+            🌬 Wind<br>
+
+            ${current.windSpeed.sg} m/s
+
+        </div>
+
+        <div class="card">
+
+            🌡 Feels Like<br>
+
+            ${feelsLike}°C
+
+        </div>
+
+        <div class="card">
+
+            🌧 Rain<br>
+
+            ${(current.precipitation.sg*100)
+            .toFixed(0)}%
+
+        </div>
+
+        <div class="card">
+
+            🌅 Sunrise<br>
+
+            5:18 AM
+
+        </div>
+
+        <div class="card">
+
+            🌇 Sunset<br>
+
+            6:12 PM
+
+        </div>
+
+        <div class="card">
+
+            🌙 Moonrise<br>
+
+            8:02 PM
+
+        </div>
+
+        <div class="card">
+
+            🌑 Moonset<br>
+
+            5:41 AM
+
+        </div>
+
+    </div>
+
+    <div class="hourly">
+
+        <h2>
+        48 Hour Forecast
+        </h2>
+
+        <div class="hour-list">
+
+            ${hourlyHTML}
+
+        </div>
+
+    </div>
+
+    <div class="forecast">
+
+        <h2>
+        15 Day Forecast
+        </h2>
+
+        <div class="forecast-list">
+
+            ${forecastHTML}
+
+        </div>
+
+    </div>
+
+    `;
+}
+
+// Rain animation
+
+function createRain(){
+
+    const weatherEffect =
+    document.getElementById("weatherEffect");
+
+    for(let i=0;i<120;i++){
+
+        const rain =
+        document.createElement("div");
+
+        rain.classList.add("rain");
+
+        rain.style.left =
+        Math.random()*window.innerWidth+"px";
+
+        rain.style.height =
+        Math.random()*40+20+"px";
+
+        rain.style.animationDuration =
+        Math.random()*1+0.5+"s";
+
+        weatherEffect.appendChild(rain);
+    }
+}
+
+</script>
+
+</body>
+</html>
