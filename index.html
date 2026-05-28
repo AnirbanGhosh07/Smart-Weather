@@ -347,7 +347,7 @@ button:hover{
     margin-top:25px;
 }
 
-/* PREMIUM 48 HOURS */
+/* 48 HOURS */
 
 .hour-list{
 
@@ -358,18 +358,6 @@ button:hover{
     gap:16px;
 
     padding:12px 4px 20px;
-}
-
-.hour-list::-webkit-scrollbar{
-
-    height:6px;
-}
-
-.hour-list::-webkit-scrollbar-thumb{
-
-    background:#38bdf8;
-
-    border-radius:10px;
 }
 
 .hour-card{
@@ -392,8 +380,6 @@ button:hover{
 
     text-align:center;
 
-    backdrop-filter:blur(18px);
-
     box-shadow:
     0 10px 30px rgba(0,0,0,0.35);
 
@@ -407,7 +393,7 @@ button:hover{
     scale(1.03);
 }
 
-/* PREMIUM 15 DAYS */
+/* 15 DAYS */
 
 .forecast-list{
 
@@ -418,18 +404,6 @@ button:hover{
     gap:18px;
 
     padding:12px 4px 20px;
-}
-
-.forecast-list::-webkit-scrollbar{
-
-    height:6px;
-}
-
-.forecast-list::-webkit-scrollbar-thumb{
-
-    background:#0ea5e9;
-
-    border-radius:10px;
 }
 
 .day-card{
@@ -452,8 +426,6 @@ button:hover{
 
     text-align:center;
 
-    backdrop-filter:blur(20px);
-
     box-shadow:
     0 12px 35px rgba(0,0,0,0.35);
 
@@ -465,6 +437,58 @@ button:hover{
     transform:
     translateY(-10px)
     scale(1.04);
+}
+
+/* Activities */
+
+.activities{
+    margin-top:30px;
+}
+
+.activity-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+}
+
+.activity-card{
+
+    background:
+    linear-gradient(
+    145deg,
+    rgba(15,23,42,0.95),
+    rgba(51,65,85,0.92)
+    );
+
+    border:
+    1px solid rgba(255,255,255,0.08);
+
+    border-radius:24px;
+
+    padding:20px;
+
+    text-align:center;
+
+    font-size:18px;
+
+    box-shadow:
+    0 10px 30px rgba(0,0,0,0.3);
+
+    transition:0.3s;
+}
+
+.activity-card:hover{
+
+    transform:
+    translateY(-5px)
+    scale(1.03);
+}
+
+.activity-card span{
+
+    color:#facc15;
+
+    font-size:16px;
 }
 
 /* Loader */
@@ -588,8 +612,6 @@ function showSuggestions(){
     .innerHTML = html;
 }
 
-// Select City
-
 function selectCity(city){
 
     document.getElementById("cityInput").value =
@@ -620,11 +642,6 @@ function loadCurrentLocation(){
 
                 "My Current Location"
             );
-        },
-
-        error => {
-
-            alert("Location permission denied");
         }
     );
 }
@@ -661,38 +678,23 @@ async function getWeather(){
     .innerHTML =
     `<div class="loader"></div>`;
 
-    try{
-
-        const geoUrl =
+    const geoUrl =
 `https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1`;
 
-        const response =
-        await fetch(geoUrl);
+    const response =
+    await fetch(geoUrl);
 
-        const data =
-        await response.json();
+    const data =
+    await response.json();
 
-        if(!data.results){
+    fetchWeather(
 
-            alert("City not found");
+        data.results[0].latitude,
 
-            return;
-        }
+        data.results[0].longitude,
 
-        fetchWeather(
-
-            data.results[0].latitude,
-
-            data.results[0].longitude,
-
-            city
-        );
-    }
-
-    catch(error){
-
-        alert("Error loading weather");
-    }
+        city
+    );
 }
 
 // Fetch Weather
@@ -703,347 +705,398 @@ async function fetchWeather(lat,lon,city){
     .innerHTML =
     `<div class="loader"></div>`;
 
-    try{
-
-        const url =
+    const url =
 `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m&hourly=temperature_2m,precipitation_probability,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&forecast_days=16&timezone=auto`;
 
-        const response =
-        await fetch(url);
+    const response =
+    await fetch(url);
 
-        const data =
-        await response.json();
+    const data =
+    await response.json();
 
-        const temp =
-        data.current.temperature_2m;
+    const temp =
+    data.current.temperature_2m;
 
-        const humidity =
-        data.current.relative_humidity_2m;
+    const humidity =
+    data.current.relative_humidity_2m;
 
-        const wind =
-        data.current.wind_speed_10m;
+    const wind =
+    data.current.wind_speed_10m;
 
-        let icon = "☀";
-        let condition = "Sunny";
+    let icon = "☀";
+    let condition = "Sunny";
 
-        document.body.className = "";
+    document.body.className = "";
+
+    document.getElementById("weatherEffect")
+    .innerHTML = "";
+
+    document.getElementById("skyEffects")
+    .innerHTML = "";
+
+    const rainChance =
+    data.hourly.precipitation_probability[0];
+
+    const hour =
+    new Date().getHours();
+
+    const isNight =
+    hour >= 18 || hour <= 5;
+
+    // Rain
+
+    if(rainChance > 60){
+
+        icon = "🌧";
+
+        condition = "Rainy";
+
+        document.body.classList.add("rainy");
+
+        createRain();
 
         document.getElementById("weatherEffect")
-        .innerHTML = "";
+        .innerHTML =
+        `<div class="cloud"></div>`;
+    }
 
-        document.getElementById("skyEffects")
-        .innerHTML = "";
+    // Partly Cloudy
 
-        const rainChance =
-        data.hourly.precipitation_probability[0];
+    else if(rainChance > 30){
 
-        const hour =
-        new Date().getHours();
+        icon = "⛅";
 
-        const isNight =
-        hour >= 18 || hour <= 5;
+        condition = "Partly Cloudy";
 
-        // RAIN
+        document.body.classList.add("sunny");
 
-        if(rainChance > 60){
-
-            icon = "🌧";
-
-            condition = "Rainy";
-
-            document.body.classList.add("rainy");
-
-            createRain();
-
-            document.getElementById("weatherEffect")
-            .innerHTML =
-            `<div class="cloud"></div>`;
-        }
-
-        // PARTLY CLOUDY
-
-        else if(rainChance > 30){
-
-            icon = "⛅";
-
-            condition = "Partly Cloudy";
-
-            document.body.classList.add("sunny");
-
-            document.getElementById("weatherEffect")
-            .innerHTML = `
-
-            <div class="half-sun"></div>
-
-            <div class="cloud"></div>
-
-            `;
-        }
-
-        // NIGHT
-
-        else if(isNight){
-
-            icon = "🌙";
-
-            condition = "Clear Night";
-
-            document.body.classList.add("night");
-
-            document.getElementById("weatherEffect")
-            .innerHTML =
-            `<div class="moon"></div>`;
-
-            createStars();
-        }
-
-        // SUNNY
-
-        else{
-
-            icon = "☀";
-
-            condition = "Sunny";
-
-            document.body.classList.add("sunny");
-
-            document.getElementById("weatherEffect")
-            .innerHTML =
-            `<div class="sun"></div>`;
-        }
-
-        // 48 HOURS
-
-        let hourlyHTML = "";
-
-        for(let i=0;i<48;i++){
-
-            let rain =
-            data.hourly.precipitation_probability[i];
-
-            let weatherIcon = "☀";
-
-            if(rain > 60){
-
-                weatherIcon = "🌧";
-            }
-
-            else if(rain > 30){
-
-                weatherIcon = "⛅";
-            }
-
-            hourlyHTML += `
-
-            <div class="hour-card">
-
-                <h2>
-                ${weatherIcon}
-                </h2>
-
-                <p>
-                🌡
-                ${data.hourly.temperature_2m[i]}°C
-                </p>
-
-                <p>
-                🌬
-                ${data.hourly.wind_speed_10m[i]} km/h
-                </p>
-
-                <p>
-                🌧
-                ${rain}%
-                </p>
-
-            </div>
-
-            `;
-        }
-
-        // 15 DAYS
-
-        let forecastHTML = "";
-
-        for(let i=0;i<15;i++){
-
-            let rain =
-            data.daily.precipitation_probability_max[i];
-
-            let weatherIcon = "☀";
-
-            if(rain > 60){
-
-                weatherIcon = "🌧";
-            }
-
-            else if(rain > 30){
-
-                weatherIcon = "⛅";
-            }
-
-            forecastHTML += `
-
-            <div class="day-card">
-
-                <h1>
-                ${weatherIcon}
-                </h1>
-
-                <p>
-
-                ${new Date(data.daily.time[i])
-                .toLocaleDateString(
-                "en-US",
-                {weekday:"short"}
-                )}
-
-                </p>
-
-                <p>
-                🌡
-                ${data.daily.temperature_2m_max[i]}°C
-                </p>
-
-                <p>
-                🌬
-                ${data.daily.wind_speed_10m_max[i]} km/h
-                </p>
-
-                <p>
-                🌧
-                ${rain}%
-                </p>
-
-            </div>
-
-            `;
-        }
-
-        // UI
-
-        document.getElementById("weather")
+        document.getElementById("weatherEffect")
         .innerHTML = `
 
-        <div class="icon">
+        <div class="half-sun"></div>
 
-            ${icon}
+        <div class="cloud"></div>
 
-        </div>
+        `;
+    }
 
-        <div class="city">
+    // Night
 
-            ${city}
+    else if(isNight){
 
-        </div>
+        icon = "🌙";
 
-        <div class="condition">
+        condition = "Clear Night";
 
-            ${condition}
+        document.body.classList.add("night");
 
-        </div>
+        document.getElementById("weatherEffect")
+        .innerHTML =
+        `<div class="moon"></div>`;
 
-        <div class="temp">
+        createStars();
+    }
 
-            ${temp}°C
+    // Sunny
 
-        </div>
+    else{
 
-        <div class="info">
+        icon = "☀";
 
-            <div class="card">
+        condition = "Sunny";
 
-                💧 Humidity<br>
+        document.body.classList.add("sunny");
 
-                ${humidity}%
+        document.getElementById("weatherEffect")
+        .innerHTML =
+        `<div class="sun"></div>`;
+    }
 
-            </div>
+    // 48 Hours
 
-            <div class="card">
+    let hourlyHTML = "";
 
-                🌬 Wind<br>
+    for(let i=0;i<48;i++){
 
-                ${wind} km/h
+        let rain =
+        data.hourly.precipitation_probability[i];
 
-            </div>
+        let weatherIcon = "☀";
 
-            <div class="card">
+        if(rain > 60){
 
-                🌡 Feels Like<br>
+            weatherIcon = "🌧";
+        }
 
-                ${(temp+2).toFixed(1)}°C
+        else if(rain > 30){
 
-            </div>
+            weatherIcon = "⛅";
+        }
 
-            <div class="card">
+        const hourTime =
+        new Date(data.hourly.time[i])
+        .toLocaleTimeString(
+        [],
+        {
+            hour:'2-digit',
+            minute:'2-digit'
+        });
 
-                🌧 Rain<br>
+        hourlyHTML += `
 
-                ${rainChance}%
+        <div class="hour-card">
 
-            </div>
-
-        </div>
-
-        <div class="hourly">
-
-            <h2 style="
-            margin:22px 0;
-            font-size:24px;
-            background:
-            linear-gradient(
-            to right,
-            #38bdf8,
-            #facc15
-            );
-            -webkit-background-clip:text;
-            -webkit-text-fill-color:transparent;
-            ">
-            48 Hour Forecast
+            <h2>
+            ${weatherIcon}
             </h2>
 
-            <div class="hour-list">
+            <p>
+            🕒
+            ${hourTime}
+            </p>
 
-                ${hourlyHTML}
+            <p>
+            🌡
+            ${data.hourly.temperature_2m[i]}°C
+            </p>
 
-            </div>
+            <p>
+            🌬
+            ${data.hourly.wind_speed_10m[i]} km/h
+            </p>
 
-        </div>
-
-        <div class="forecast">
-
-            <h2 style="
-            margin:22px 0;
-            font-size:24px;
-            background:
-            linear-gradient(
-            to right,
-            #38bdf8,
-            #facc15
-            );
-            -webkit-background-clip:text;
-            -webkit-text-fill-color:transparent;
-            ">
-            15 Day Forecast
-            </h2>
-
-            <div class="forecast-list">
-
-                ${forecastHTML}
-
-            </div>
+            <p>
+            🌧
+            ${rain}%
+            </p>
 
         </div>
 
         `;
     }
 
-    catch(error){
+    // 15 Days
 
-        document.getElementById("weather")
-        .innerHTML =
-        "Weather unavailable";
+    let forecastHTML = "";
+
+    for(let i=0;i<15;i++){
+
+        let rain =
+        data.daily.precipitation_probability_max[i];
+
+        let weatherIcon = "☀";
+
+        if(rain > 60){
+
+            weatherIcon = "🌧";
+        }
+
+        else if(rain > 30){
+
+            weatherIcon = "⛅";
+        }
+
+        const fullDate =
+        new Date(data.daily.time[i])
+        .toLocaleDateString(
+        "en-US",
+        {
+            weekday:"short",
+            day:"numeric",
+            month:"short"
+        });
+
+        forecastHTML += `
+
+        <div class="day-card">
+
+            <h1>
+            ${weatherIcon}
+            </h1>
+
+            <p>
+
+            ${fullDate}
+
+            </p>
+
+            <p>
+            🌡
+            ${data.daily.temperature_2m_max[i]}°C
+            </p>
+
+            <p>
+            🌬
+            ${data.daily.wind_speed_10m_max[i]} km/h
+            </p>
+
+            <p>
+            🌧
+            ${rain}%
+            </p>
+
+        </div>
+
+        `;
     }
+
+    document.getElementById("weather")
+    .innerHTML = `
+
+    <div class="icon">
+
+        ${icon}
+
+    </div>
+
+    <div class="city">
+
+        ${city}
+
+    </div>
+
+    <div class="condition">
+
+        ${condition}
+
+    </div>
+
+    <div class="temp">
+
+        ${temp}°C
+
+    </div>
+
+    <div class="info">
+
+        <div class="card">
+
+            💧 Humidity<br>
+
+            ${humidity}%
+
+        </div>
+
+        <div class="card">
+
+            🌬 Wind<br>
+
+            ${wind} km/h
+
+        </div>
+
+        <div class="card">
+
+            🌡 Feels Like<br>
+
+            ${(temp+2).toFixed(1)}°C
+
+        </div>
+
+        <div class="card">
+
+            🌧 Rain<br>
+
+            ${rainChance}%
+
+        </div>
+
+    </div>
+
+    <div class="hourly">
+
+        <h2 style="
+        margin:22px 0;
+        font-size:24px;
+        background:
+        linear-gradient(
+        to right,
+        #38bdf8,
+        #facc15
+        );
+        -webkit-background-clip:text;
+        -webkit-text-fill-color:transparent;
+        ">
+        48 Hour Forecast
+        </h2>
+
+        <div class="hour-list">
+
+            ${hourlyHTML}
+
+        </div>
+
+    </div>
+
+    <div class="forecast">
+
+        <h2 style="
+        margin:22px 0;
+        font-size:24px;
+        background:
+        linear-gradient(
+        to right,
+        #38bdf8,
+        #facc15
+        );
+        -webkit-background-clip:text;
+        -webkit-text-fill-color:transparent;
+        ">
+        15 Day Forecast
+        </h2>
+
+        <div class="forecast-list">
+
+            ${forecastHTML}
+
+        </div>
+
+    </div>
+
+    <div class="activities">
+
+    <h2 style="
+    margin:25px 0;
+    font-size:24px;
+    background:
+    linear-gradient(
+    to right,
+    #38bdf8,
+    #facc15
+    );
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    ">
+    Activities
+    </h2>
+
+    <div class="activity-grid">
+
+    <div class="activity-card">
+    🏃 Running<br>
+    <span>Fair</span>
+    </div>
+
+    <div class="activity-card">
+    🚶 Jogging<br>
+    <span>Good</span>
+    </div>
+
+    <div class="activity-card">
+    🚴 Cycling<br>
+    <span>Fair</span>
+    </div>
+
+    <div class="activity-card">
+    🥾 Hiking<br>
+    <span>Poor</span>
+    </div>
+
+    </div>
+
+    </div>
+
+    `;
 }
 
 // Rain
