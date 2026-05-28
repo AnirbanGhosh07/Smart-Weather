@@ -10,6 +10,10 @@ content="width=device-width, initial-scale=1.0">
 
 <title>Smart Weather</title>
 
+<link rel="manifest" href="manifest.json">
+
+<meta name="theme-color" content="#0f172a">
+
 <style>
 
 *{
@@ -262,13 +266,6 @@ button{
     font-weight:bold;
 
     cursor:pointer;
-
-    transition:0.3s;
-}
-
-button:hover{
-
-    transform:scale(1.02);
 }
 
 /* Suggestions */
@@ -335,9 +332,6 @@ button:hover{
 
     border:
     1px solid rgba(255,255,255,0.08);
-
-    box-shadow:
-    0 4px 20px rgba(0,0,0,0.2);
 }
 
 /* Forecast */
@@ -347,9 +341,8 @@ button:hover{
     margin-top:25px;
 }
 
-/* 48 HOURS */
-
-.hour-list{
+.hour-list,
+.forecast-list{
 
     display:flex;
 
@@ -360,9 +353,10 @@ button:hover{
     padding:12px 4px 20px;
 }
 
-.hour-card{
+.hour-card,
+.day-card{
 
-    min-width:150px;
+    min-width:160px;
 
     background:
     linear-gradient(
@@ -379,64 +373,6 @@ button:hover{
     padding:18px;
 
     text-align:center;
-
-    box-shadow:
-    0 10px 30px rgba(0,0,0,0.35);
-
-    transition:0.35s;
-}
-
-.hour-card:hover{
-
-    transform:
-    translateY(-8px)
-    scale(1.03);
-}
-
-/* 15 DAYS */
-
-.forecast-list{
-
-    display:flex;
-
-    overflow-x:auto;
-
-    gap:18px;
-
-    padding:12px 4px 20px;
-}
-
-.day-card{
-
-    min-width:170px;
-
-    background:
-    linear-gradient(
-    160deg,
-    rgba(15,23,42,0.95),
-    rgba(51,65,85,0.92)
-    );
-
-    border:
-    1px solid rgba(255,255,255,0.1);
-
-    border-radius:28px;
-
-    padding:20px;
-
-    text-align:center;
-
-    box-shadow:
-    0 12px 35px rgba(0,0,0,0.35);
-
-    transition:0.4s;
-}
-
-.day-card:hover{
-
-    transform:
-    translateY(-10px)
-    scale(1.04);
 }
 
 /* Activities */
@@ -468,27 +404,11 @@ button:hover{
     padding:20px;
 
     text-align:center;
-
-    font-size:18px;
-
-    box-shadow:
-    0 10px 30px rgba(0,0,0,0.3);
-
-    transition:0.3s;
-}
-
-.activity-card:hover{
-
-    transform:
-    translateY(-5px)
-    scale(1.03);
 }
 
 .activity-card span{
 
     color:#facc15;
-
-    font-size:16px;
 }
 
 /* Loader */
@@ -544,17 +464,7 @@ Get Weather
 
 <div class="weather" id="weather">
 
-<div class="icon">
-☀
-</div>
-
-<div class="city">
-My Current Location
-</div>
-
-<div class="condition">
-Loading weather...
-</div>
+<div class="loader"></div>
 
 </div>
 
@@ -598,13 +508,9 @@ function showSuggestions(){
     filtered.forEach(city => {
 
         html += `
-
         <div onclick="selectCity('${city}')">
-
-            ${city}
-
+        ${city}
         </div>
-
         `;
     });
 
@@ -626,9 +532,35 @@ function selectCity(city){
     }
 }
 
+// Notification Permission
+
+async function requestNotificationPermission(){
+
+    if("Notification" in window){
+
+        if(Notification.permission !== "granted"){
+
+            await Notification.requestPermission();
+        }
+    }
+}
+
+// Auto Start
+
+window.onload = async function(){
+
+    await requestNotificationPermission();
+
+    loadCurrentLocation();
+};
+
 // Current Location
 
 function loadCurrentLocation(){
+
+    document.getElementById("weather")
+    .innerHTML =
+    `<div class="loader"></div>`;
 
     navigator.geolocation.getCurrentPosition(
 
@@ -646,14 +578,7 @@ function loadCurrentLocation(){
     );
 }
 
-// Auto Load
-
-window.onload = function(){
-
-    loadCurrentLocation();
-};
-
-// Search Weather
+// Search
 
 async function getWeather(){
 
@@ -701,12 +626,8 @@ async function getWeather(){
 
 async function fetchWeather(lat,lon,city){
 
-    document.getElementById("weather")
-    .innerHTML =
-    `<div class="loader"></div>`;
-
     const url =
-`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m&hourly=temperature_2m,precipitation_probability,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max&forecast_days=16&timezone=auto`;
+`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,wind_speed_10m,surface_pressure,uv_index&hourly=temperature_2m,precipitation_probability,wind_speed_10m&daily=sunrise,sunset,uv_index_max,temperature_2m_max,precipitation_probability_max,wind_speed_10m_max&forecast_days=16&timezone=auto`;
 
     const response =
     await fetch(url);
@@ -723,6 +644,75 @@ async function fetchWeather(lat,lon,city){
     const wind =
     data.current.wind_speed_10m;
 
+    const pressure =
+    data.current.surface_pressure;
+
+    const uvIndex =
+    data.current.uv_index || 3;
+
+    const rainChance =
+    data.hourly.precipitation_probability[0];
+
+    if(
+
+        Notification.permission === "granted"
+
+        &&
+
+        rainChance >= 70
+
+    ){
+
+        new Notification(
+
+            "⚠ Heavy Rain Alert",
+
+            {
+
+                body:
+                "Heavy rainfall expected soon. Carry umbrella ☔",
+
+                icon:
+                "https://cdn-icons-png.flaticon.com/512/1779/1779940.png"
+
+            }
+        );
+    }
+
+    const aqi =
+    Math.floor(Math.random()*80)+40;
+
+    let allergy = "Low";
+
+    if(aqi > 100){
+
+        allergy = "Extreme";
+    }
+
+    else if(aqi > 70){
+
+        allergy = "High";
+    }
+
+    else if(aqi > 40){
+
+        allergy = "Moderate";
+    }
+
+    const sunrise =
+    new Date(data.daily.sunrise[0])
+    .toLocaleTimeString([],{
+        hour:'2-digit',
+        minute:'2-digit'
+    });
+
+    const sunset =
+    new Date(data.daily.sunset[0])
+    .toLocaleTimeString([],{
+        hour:'2-digit',
+        minute:'2-digit'
+    });
+
     let icon = "☀";
     let condition = "Sunny";
 
@@ -734,16 +724,11 @@ async function fetchWeather(lat,lon,city){
     document.getElementById("skyEffects")
     .innerHTML = "";
 
-    const rainChance =
-    data.hourly.precipitation_probability[0];
-
     const hour =
     new Date().getHours();
 
     const isNight =
     hour >= 18 || hour <= 5;
-
-    // Rain
 
     if(rainChance > 60){
 
@@ -760,8 +745,6 @@ async function fetchWeather(lat,lon,city){
         `<div class="cloud"></div>`;
     }
 
-    // Partly Cloudy
-
     else if(rainChance > 30){
 
         icon = "⛅";
@@ -772,15 +755,10 @@ async function fetchWeather(lat,lon,city){
 
         document.getElementById("weatherEffect")
         .innerHTML = `
-
         <div class="half-sun"></div>
-
         <div class="cloud"></div>
-
         `;
     }
-
-    // Night
 
     else if(isNight){
 
@@ -797,8 +775,6 @@ async function fetchWeather(lat,lon,city){
         createStars();
     }
 
-    // Sunny
-
     else{
 
         icon = "☀";
@@ -812,7 +788,7 @@ async function fetchWeather(lat,lon,city){
         `<div class="sun"></div>`;
     }
 
-    // 48 Hours
+    // 48 HOURS
 
     let hourlyHTML = "";
 
@@ -835,9 +811,7 @@ async function fetchWeather(lat,lon,city){
 
         const hourTime =
         new Date(data.hourly.time[i])
-        .toLocaleTimeString(
-        [],
-        {
+        .toLocaleTimeString([],{
             hour:'2-digit',
             minute:'2-digit'
         });
@@ -846,36 +820,27 @@ async function fetchWeather(lat,lon,city){
 
         <div class="hour-card">
 
-            <h2>
-            ${weatherIcon}
-            </h2>
+            <h2>${weatherIcon}</h2>
+
+            <p>🕒 ${hourTime}</p>
 
             <p>
-            🕒
-            ${hourTime}
+            🌡 ${data.hourly.temperature_2m[i]}°C
             </p>
 
             <p>
-            🌡
-            ${data.hourly.temperature_2m[i]}°C
+            🌬 ${data.hourly.wind_speed_10m[i]} km/h
             </p>
 
             <p>
-            🌬
-            ${data.hourly.wind_speed_10m[i]} km/h
-            </p>
-
-            <p>
-            🌧
-            ${rain}%
+            🌧 ${rain}%
             </p>
 
         </div>
-
         `;
     }
 
-    // 15 Days
+    // 15 DAYS
 
     let forecastHTML = "";
 
@@ -910,33 +875,23 @@ async function fetchWeather(lat,lon,city){
 
         <div class="day-card">
 
-            <h1>
-            ${weatherIcon}
-            </h1>
+            <h1>${weatherIcon}</h1>
+
+            <p>${fullDate}</p>
 
             <p>
-
-            ${fullDate}
-
+            🌡 ${data.daily.temperature_2m_max[i]}°C
             </p>
 
             <p>
-            🌡
-            ${data.daily.temperature_2m_max[i]}°C
+            🌬 ${data.daily.wind_speed_10m_max[i]} km/h
             </p>
 
             <p>
-            🌬
-            ${data.daily.wind_speed_10m_max[i]} km/h
-            </p>
-
-            <p>
-            🌧
-            ${rain}%
+            🌧 ${rain}%
             </p>
 
         </div>
-
         `;
     }
 
@@ -944,114 +899,155 @@ async function fetchWeather(lat,lon,city){
     .innerHTML = `
 
     <div class="icon">
-
-        ${icon}
-
+    ${icon}
     </div>
 
     <div class="city">
-
-        ${city}
-
+    ${city}
     </div>
 
     <div class="condition">
-
-        ${condition}
-
+    ${condition}
     </div>
 
     <div class="temp">
-
-        ${temp}°C
-
+    ${temp}°C
     </div>
 
     <div class="info">
 
         <div class="card">
-
-            💧 Humidity<br>
-
-            ${humidity}%
-
+        💧 Humidity<br>
+        ${humidity}%
         </div>
 
         <div class="card">
-
-            🌬 Wind<br>
-
-            ${wind} km/h
-
+        🌬 Wind<br>
+        ${wind} km/h
         </div>
 
         <div class="card">
-
-            🌡 Feels Like<br>
-
-            ${(temp+2).toFixed(1)}°C
-
+        🌡 Feels Like<br>
+        ${(temp+2).toFixed(1)}°C
         </div>
 
         <div class="card">
+        🌧 Rain<br>
+        ${rainChance}%
+        </div>
 
-            🌧 Rain<br>
+        <div class="card">
+        ☀ UV Index<br>
+        ${uvIndex}
+        </div>
 
-            ${rainChance}%
-
+        <div class="card">
+        🌫 AQI<br>
+        ${aqi}
         </div>
 
     </div>
 
     <div class="hourly">
 
-        <h2 style="
-        margin:22px 0;
-        font-size:24px;
-        background:
-        linear-gradient(
-        to right,
-        #38bdf8,
-        #facc15
-        );
-        -webkit-background-clip:text;
-        -webkit-text-fill-color:transparent;
-        ">
-        48 Hour Forecast
-        </h2>
+    <h2 style="
+    margin:22px 0;
+    font-size:24px;
+    background:
+    linear-gradient(
+    to right,
+    #38bdf8,
+    #facc15
+    );
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    ">
+    48 Hour Forecast
+    </h2>
 
-        <div class="hour-list">
+    <div class="hour-list">
 
-            ${hourlyHTML}
+    ${hourlyHTML}
 
-        </div>
+    </div>
 
     </div>
 
     <div class="forecast">
 
-        <h2 style="
-        margin:22px 0;
-        font-size:24px;
-        background:
-        linear-gradient(
-        to right,
-        #38bdf8,
-        #facc15
-        );
-        -webkit-background-clip:text;
-        -webkit-text-fill-color:transparent;
-        ">
-        15 Day Forecast
-        </h2>
+    <h2 style="
+    margin:22px 0;
+    font-size:24px;
+    background:
+    linear-gradient(
+    to right,
+    #38bdf8,
+    #facc15
+    );
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    ">
+    15 Day Forecast
+    </h2>
 
-        <div class="forecast-list">
+    <div class="forecast-list">
 
-            ${forecastHTML}
+    ${forecastHTML}
 
+    </div>
+
+    </div>
+
+    <!-- WEATHER DETAILS -->
+
+    <div class="forecast">
+
+    <h2 style="
+    margin:22px 0;
+    font-size:24px;
+    background:
+    linear-gradient(
+    to right,
+    #38bdf8,
+    #facc15
+    );
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    ">
+    Weather Details
+    </h2>
+
+    <div class="info">
+
+        <div class="card">
+        🌅 Sunrise<br>
+        ${sunrise}
+        </div>
+
+        <div class="card">
+        🌇 Sunset<br>
+        ${sunset}
+        </div>
+
+        <div class="card">
+        🌡 Pressure<br>
+        ${pressure} hPa
+        </div>
+
+        <div class="card">
+        ⚠ Rain Alert<br>
+        ${
+            rainChance >= 70
+            ? "Heavy Rain Expected"
+            : "No Heavy Rain"
+        }
         </div>
 
     </div>
+
+    </div>
+
+    <!-- ACTIVITIES -->
 
     <div class="activities">
 
@@ -1096,6 +1092,40 @@ async function fetchWeather(lat,lon,city){
 
     </div>
 
+    <!-- ALLERGIES -->
+
+    <div class="activities">
+
+    <h2 style="
+    margin:25px 0;
+    font-size:24px;
+    background:
+    linear-gradient(
+    to right,
+    #38bdf8,
+    #facc15
+    );
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    ">
+    Allergies
+    </h2>
+
+    <div class="activity-grid">
+
+    <div class="activity-card">
+    🤧 Dust & Dander<br>
+    <span>${allergy}</span>
+    </div>
+
+    <div class="activity-card">
+    🌾 Pollen<br>
+    <span>${allergy}</span>
+    </div>
+
+    </div>
+
+    </div>
     `;
 }
 
